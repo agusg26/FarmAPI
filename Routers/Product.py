@@ -1,13 +1,15 @@
-from fastapi import APIRouter,HTTPException,status,Depends
+from fastapi import APIRouter,HTTPException,status,Depends,Request
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from db.cliente import client
-from db.Modelos.User import User
-from db.Modelos.Product import Product
-from db.Schemas.Product import search_product,products_schema
+from db.Models.User import User
+from db.Models.Product import Product
+from db.Schemas.Product import search_product,products_schema,product_schema
 from bson import ObjectId
 from datetime import datetime
 from Routers.authUser import current_user
 
-
+templates = Jinja2Templates(directory="templates")
 router = APIRouter(prefix= "/product",tags=["product"])
 
 
@@ -27,11 +29,9 @@ async def addProduct(product: Product, user: User = Depends(current_user)):
     return search_product("_id",id)
 
 @router.get("/all")
-async def getProducts(user: User = Depends(current_user)):
-    if user is None:
-        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
-                            detail= "Usted no esta registrado como usuario")
-    return products_schema(client.products.find())
+async def getProducts(request: Request):
+    list = products_schema(client.products.find())
+    return templates.TemplateResponse("products.html",{"request": request, "products": list})
 
 @router.get("/{id}")
 async def getProduct(id: str, user: User = Depends(current_user)):
@@ -40,12 +40,12 @@ async def getProduct(id: str, user: User = Depends(current_user)):
                             detail= "Usted no esta registrado como usuario")
     return search_product("_id", ObjectId(id))
 
-@router.get("/")
-async def getProduct(name: str, user: User = Depends(current_user)):
-    if user is None:
-        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
-                            detail= "Usted no esta registrado como usuario")
-    return search_product("name",name)
+@router.post("/")
+async def getProduct(request: Request):
+    formdata = await request.form()
+    name = formdata['name']
+    product = search_product("name",name)
+    return templates.TemplateResponse("product.html",{"request":request,"product":product})
 
 @router.patch("/update_stock/{name}")
 async def stock(name: str,cant: int ,user: User = Depends(current_user)):
