@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException, status ,Depends
+from fastapi import APIRouter, HTTPException, status ,Depends, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt,JWTError
-from db.Modelos.Userdb import Userdb
-from db.Modelos.User import User
+from db.Models.Userdb import Userdb
+from db.Models.User import User
 from db.Schemas.Userdb import buscaUserdb,user_schema,users_schema
 from db.cliente import client
 from passlib.context import CryptContext
@@ -15,6 +17,7 @@ SECRET = "1jkhdksdhk34k"
 router = APIRouter(prefix= "/user",tags=["user"])
 Oauth2 = OAuth2PasswordBearer(tokenUrl="user/login")
 crypt = CryptContext(schemes=["bcrypt"])
+templates = Jinja2Templates(directory="templates")
 
 async def auth_user(token: str = Depends(Oauth2)):
     exception = HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
