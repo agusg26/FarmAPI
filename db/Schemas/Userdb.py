@@ -1,5 +1,5 @@
-from db.Modelos.User import User
-from db.Modelos.Userdb import Userdb
+from db.Models.User import User
+from db.Models.Userdb import Userdb
 from db.cliente import client
 
 def user_schema(user) -> dict:

@@ -1,4 +1,4 @@
-from db.Modelos.Product import Product
+from db.Models.Product import Product
 from db.cliente import client
 from fastapi import HTTPException,status
 
