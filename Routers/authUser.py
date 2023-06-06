@@ -19,6 +19,7 @@ Oauth2 = OAuth2PasswordBearer(tokenUrl="user/login")
 crypt = CryptContext(schemes=["bcrypt"])
 templates = Jinja2Templates(directory="templates")
 
+
 async def auth_user(token: str = Depends(Oauth2)):
     exception = HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
                              detail= "Credenciales invalidas")
@@ -38,7 +39,7 @@ async def current_user(user: User = Depends(auth_user)):
     return user
 
 
-@router.post("/register")
+@router.post("/register",response_model=User,status_code=status.HTTP_201_CREATED)
 async def authUser(user: Userdb):
     if user is None:
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
@@ -51,7 +52,7 @@ async def authUser(user: Userdb):
     id = client.users2.insert_one(user_dict).inserted_id
     return buscaUserdb("_id",id)
 
-@router.get("/{id}")
+@router.get("/{id}",status_code=status.HTTP_302_FOUND)
 async def getUser(id: str, user: User = Depends(current_user)):
     if user is None:
         raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
@@ -59,22 +60,22 @@ async def getUser(id: str, user: User = Depends(current_user)):
     return buscaUserdb("_id",ObjectId(id))
     
 
-
-@router.post("/login")
-async def authUser(form : OAuth2PasswordRequestForm = Depends()):
-    user = client.users2.find_one({"email": form.username})
+#form : OAuth2PasswordRequestForm = Depends() 
+@router.post("/login",status_code=status.HTTP_202_ACCEPTED)
+async def authUser(request : Request):
+    formdata = await request.form()
+    user = client.users2.find_one({"email": formdata["adress"]})
     try:
         user = Userdb(**user)
     except:
-        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND,
-                             detail= "Email no encontrado")
-    if crypt.verify(form.password,user.password):
+        return templates.TemplateResponse("errorlogin.html",{"request":request})
+    if crypt.verify(formdata["password"],user.password):
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_DURATION)
         access_token = {"sub": user.email, "exp": expire}
-        return {"access_token": jwt.encode(access_token,SECRET,algorithm= ALGORITM),"token_type": "bearer"}
+        token = {"access_token": jwt.encode(access_token,SECRET,algorithm= ALGORITM),"token_type": "bearer"}
+        return RedirectResponse("/",303)
     else:
-        raise HTTPException(status_code= status.HTTP_401_UNAUTHORIZED,
-                             detail= "Contraseña incorrecta")
+        return templates.TemplateResponse("errorlogin.html",{"request":request})
     
 
     
@@ -86,7 +87,7 @@ async def hola(user: User = Depends(current_user)):
         return user
     
      
-@router.patch("/password")
+@router.patch("/password",response_model=str,status_code=status.HTTP_200_OK)
 async def setPassword(newpass: str, user: User = Depends(current_user)):
     if user is None:
         raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST)
@@ -100,7 +101,7 @@ async def setPassword(newpass: str, user: User = Depends(current_user)):
 
 
 
-@router.patch("/email",status_code= status.HTTP_202_ACCEPTED)
+@router.patch("/email",response_model=str,status_code= status.HTTP_202_ACCEPTED)
 async def setEmail(newemail: str, user: User = Depends(current_user)):
     if user is None:
         raise HTTPException(status_code= status.HTTP_400_BAD_REQUEST)
